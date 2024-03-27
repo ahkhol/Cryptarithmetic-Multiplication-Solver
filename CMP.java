@@ -16,7 +16,7 @@ import java.lang.Math;
  * setting up the puzzle constraints, to attempting to solve the puzzle and
  * displaying the solution.
  * 
- * @version 0.0.1
+ * @version 0.0.2
  * @author Ahmed Alonazi
  */
 public class CMP {
@@ -281,7 +281,8 @@ public class CMP {
             }
         }
 
-        // Set up domain constraints for each letter based on preliminary calculations. Too see if the current assignment will lead to a dead end.
+        // Set up domain constraints for each letter based on preliminary calculations.
+        // Too see if the current assignment will lead to a dead end.
         for (Letter letter : letters) {
             for (int i = letter.isLeading() ? 1 : 0; i <= 9; i++) {
                 letter.setDigit(i);
@@ -307,32 +308,56 @@ public class CMP {
     }
 
     /**
-     * Attempts to solve the cryptarithmetic puzzle using a recursive backtracking
-     * algorithm.
-     * Assigns digits to letters while adhering to the constraints and checks if a
-     * valid solution is found.
+     * Attempts to solve the cryptarithmetic puzzle recursively by assigning digits
+     * to letters.
+     * It explores possible digit assignments for each letter in the puzzle,
+     * backtracking if necessary, until it either finds a solution or exhausts all
+     * possibilities.
      * 
-     * @param index The current index in the letters array being processed.
-     * @return {@code true} if the puzzle is solved successfully; {@code false}
-     *         otherwise.
+     * @param index The current position in the array of letters being processed. It
+     *              tracks which letter is being assigned a digit at any step of the
+     *              recursion.
+     * @return {@code true} if a valid solution is found that satisfies the puzzle's
+     *         constraints; {@code false} otherwise.
      */
     private boolean solvePuzzle(int index) {
 
+        // Base case: If the index has reached the length of the letters array, all
+        // letters have been assigned digits.
+
         if (index == letters.length) {
+            // Check if the current assignment of digits to letters satisfies the puzzle.
             return checkSolution();
         }
 
+        // Optimization: If the current letter is the last letter and it's not supposed
+        // to repeat (optimization for multiplication),
+        // skip the current letter's processing and move to the next index.
         if (!letterRepating && index == lastLetterIndex)
             return solvePuzzle(index + 1);
 
+        // Iterate through all possible digits (1-9 for leading letters, 0-9 otherwise)
+        // for the current letter.
         for (int digit = letters[index].isLeading() ? 1 : 0; digit <= 9; digit++) {
 
+            // Check if the current digit is available in the domain (has not been used yet)
+            // and is valid for the current letter (based on preliminary analysis).
             if (domain[digit] && letters[index].domainAt(digit)) {
 
+                // Assign the digit to the current letter and mark the digit as used in the
+                // domain.
                 letters[index].setDigit(digit);
                 domain[digit] = false;
+
+                // Recursively attempt to solve the puzzle for the next letter.
+                // If the recursive call returns true, a solution has been found and propagate
+                // this success back up the recursive calls.
                 if (solvePuzzle(index + 1))
                     return true;
+
+                // Backtrack: Increment the backtrack counter, reset the current letter's digit
+                // assignment,
+                // and mark the digit as available again in the domain for further attempts.
                 count++;
                 letters[index].resetDigit();
                 domain[digit] = true;
@@ -340,20 +365,37 @@ public class CMP {
 
         }
 
+        // If all digits for the current letter have been tried and no solution found,
+        // return false to indicate failure at this path.
         return false;
     }
 
     /**
-     * Checks if the current assignment of digits to letters satisfies the puzzle
-     * equation.
+     * Checks if the current assignment of digits to letters results in a valid
+     * solution for the cryptarithmetic puzzle.
+     * It calculates the numerical values of both the left-hand side (LHS) and
+     * right-hand side (RHS) of the equation
+     * based on the current digit assignments and compares them to verify the
+     * solution's correctness.
      * 
-     * @return {@code true} if the current assignment solves the puzzle;
-     *         {@code false} otherwise.
+     * The method also handles an optimization check for cases where the last letter
+     * in the result should not repeat
+     * across different operands to potentially skip unnecessary calculations.
+     * 
+     * @return {@code true} if the current assignments solve the puzzle, i.e., LHS
+     *         equals RHS; {@code false} otherwise.
      */
     private boolean checkSolution() {
+        // Initialize variables to hold the computed numerical values of the left and
+        // right sides of the equation, and for intermediate calculations.
         int leftSide = 0, rightSide = 0, currentValue = 0, lastDigitValue = 1;
 
+        // Optimization: If the last letter is not supposed to repeat (based on the
+        // puzzle's setup),
+        // perform a pre-check to ensure the last digit of the result is feasible.
         if (!letterRepating) {
+            // Calculate the product of the digits corresponding to the last letter of each
+            // operand (LHS).
             for (int i = 0; i < words.length - 1; i++) {
                 for (int j = 0; j < letters.length; j++) {
                     if (letters[j].getCharacter() == words[i].charAt(words[i].length() - 1)) {
@@ -363,31 +405,41 @@ public class CMP {
                 }
             }
 
+            // Validate the last digit value against the domain; if it fails, the solution
+            // is not valid.
             if (lastDigitValue >= 0 && domain[lastDigitValue % 10])
                 letters[lastLetterIndex].setDigit(lastDigitValue % 10);
             else
                 return false;
+            // Additional check for leading zero constraint.
             if (letters[lastLetterIndex].isLeading() && letters[lastLetterIndex].getDigit() == 0)
                 return false;
         }
+        // Compute the numerical values for the LHS and RHS of the equation based on
+        // current digit assignments.
         for (int i = 0; i < words.length; i++) {
             for (int j = 0; j < words[i].length(); j++) {
                 for (int k = 0; k < letters.length; k++) {
                     if (letters[k].getCharacter() == words[i].charAt(j)) {
+                        // Convert each letter to its assigned digit and calculate its contribution to the word's total value.
                         currentValue += letters[k].getDigit() * Math.pow(10, words[i].length() - j - 1);
                         break;
                     }
                 }
             }
+            // Accumulate the value for the LHS (considering multiplication between operands) and set the RHS.
             if (i == 0 && leftSide == 0 && currentValue > 0) {
                 leftSide = currentValue;
             } else if (i < words.length - 1) {
                 leftSide *= currentValue;
             } else if (i == words.length - 1) {
+                // For the RHS word
                 rightSide = currentValue;
             }
+             // Reset currentValue for the next word in the loop.
             currentValue = 0;
         }
+        // Return true if the LHS and RHS values match, indicating a valid solution; false otherwise.
         return leftSide == rightSide;
     }
 
