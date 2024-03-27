@@ -281,7 +281,7 @@ public class CMP {
             }
         }
 
-        // Set up domain constraints for each letter based on preliminary calculations.
+        // Set up domain constraints for each letter based on preliminary calculations. Too see if the current assignment will lead to a dead end.
         for (Letter letter : letters) {
             for (int i = letter.isLeading() ? 1 : 0; i <= 9; i++) {
                 letter.setDigit(i);
